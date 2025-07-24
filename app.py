@@ -1,6 +1,9 @@
 import sqlite3
 import DatabaseManager
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import HTMLResponse
 from fastapi import FastAPI, HTTPException, Request, Response
+from urllib.parse import unquote 
 from starlette.middleware.base import BaseHTTPMiddleware
 from contextlib import asynccontextmanager
 import json
@@ -11,9 +14,6 @@ import uvicorn
 from controllers import history_controller, mock_controller, update_controller
 from middleware.cookies_middleware import cookies_middleware
 from middleware.history_middleware import history_middleware
-
-#SQLite DataBase, thar parse json file with responses
-db_manager = DatabaseManager.DatabaseManager("database.db", "responses_66.json")
 
 
 def get_endpoints_file():
@@ -37,11 +37,51 @@ def get_endpoints_file():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    print("--- Старт жизненного цикла приложения ---")
+    endpoints_file_path = get_endpoints_file()
+
+    db_manager = DatabaseManager.DatabaseManager(
+        db_name="database.db", 
+        json_path=str(endpoints_file_path)
+    )
     db_manager.run_full_setup_cycle()
     app.state.db_manager = db_manager
+    print("--- Менеджер БД успешно инициализирован и сохранен в app.state ---")
     yield
 
-app = FastAPI(lifespan=lifespan)
+app = FastAPI(lifespan=lifespan, docs_url=None, redoc_url=None)
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+@app.get("/docs", include_in_schema=False)
+async def custom_swagger_ui_html():
+    return HTMLResponse(
+        content="""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <link type="text/css" rel="stylesheet" href="/static/swagger-ui.css">
+            <title>Swagger UI</title>
+        </head>
+        <body>
+            <div id="swagger-ui"></div>
+            <script src="/static/swagger-ui-bundle.js"></script>
+            <script>
+                const ui = SwaggerUIBundle({
+                    url: '/openapi.json',
+                    dom_id: '#swagger-ui',
+                    presets: [
+                        SwaggerUIBundle.presets.apis,
+                        SwaggerUIBundle.SwaggerUIStandalonePreset
+                    ],
+                    layout: "BaseLayout"
+                })
+            </script>
+        </body>
+        </html>
+        """,
+        status_code=200,
+    )
+
 
 app.add_middleware(BaseHTTPMiddleware, dispatch = history_middleware)
 app.add_middleware(BaseHTTPMiddleware, dispatch = cookies_middleware)

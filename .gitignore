@@ -1,7 +1,11 @@
 *
 !.gitignore
 !*.py
+
 !/controllers/
-!/controllers/**/
 !/middleware/
-!/middleware/**/
+!/static/
+
+!/controllers/**
+!/middleware/**
+!/static/**

@@ -66,9 +66,9 @@ class DatabaseManager:
             for endpoint, details in data.items():
                 method = details.get("method") 
                 response_body = details.get("response")
-                
                 response_as_text = json.dumps(response_body, ensure_ascii=False, indent=2)
-                data_to_insert.append((endpoint, method, response_as_text))
+                normalized_endpoint = "/" + endpoint.strip().lstrip('/')
+                data_to_insert.append((normalized_endpoint, method, response_as_text))
 
             if not data_to_insert:
                 print("В файле нет данных для добавления.")
@@ -77,11 +77,12 @@ class DatabaseManager:
             # Connect to Database
             with sqlite3.connect(self.db_name) as connection:
                 cursor = connection.cursor()
+                cursor.execute("DELETE FROM responses") 
                 cursor.executemany(
                     "INSERT INTO responses (endpoint, method, response) VALUES (?, ?, ?)",
                     data_to_insert
                 )
-                print(f"Добавлено {cursor.rowcount} новых записей в таблицу 'responses'.")
+                print(f"Таблица 'responses' очищена и в нее добавлено {cursor.rowcount} новых записей.")
 
         except FileNotFoundError:
             print(f"Ошибка: Файл не найден по пути '{json_path}'")

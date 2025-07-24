@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 from typing import Any
-
+from urllib.parse import unquote 
 
 class UpdateRequest(BaseModel):
     method: str
@@ -11,8 +11,8 @@ router = APIRouter()
 
 @router.put("/set/{endpoint:path}", tags=["Update Responses"])
 async def update_mock_response(request: Request, endpoint: str, update_data: UpdateRequest):
-
-    full_endpoint = "/" + endpoint
+    decoded_path = unquote(endpoint)
+    full_endpoint = "/" + decoded_path.strip().lstrip('/')
     
     db_manager = request.app.state.db_manager
     
